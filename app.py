@@ -1,56 +1,77 @@
-
 import streamlit as st
 import pandas as pd
+import numpy as np
 import joblib
 
-# Load the trained model
+# -----------------
+# Load the model
+# -----------------
 model = joblib.load("model.pkl")
 
-st.set_page_config(page_title="Mental Health Risk Predictor", page_icon="🧠")
+# -----------------
+# Login credentials
+# -----------------
+USER_CREDENTIALS = {
+    "admin": "password123",  # Change to your own
+    "user": "1234"
+}
 
-# Simple login system
-st.title("🔐 Login Page")
-username = st.text_input("Username")
-password = st.text_input("Password", type="password")
-
-if username == "admin" and password == "1234":
-    st.success("✅ Login successful!")
-
-    st.title("🧠 Mental Health Risk Predictor")
-
-    age = st.slider("Age", 18, 65, 25)
-    gender = st.selectbox("Gender", ["Male", "Female", "Other"])
-    family_history = st.selectbox("Family history of mental illness?", ["Yes", "No"])
-    work_interfere = st.selectbox("Does your work interfere with mental health?", ["Never", "Rarely", "Sometimes", "Often"])
-    no_employees = st.selectbox("Company Size", ["1-5", "6-25", "26-100", "100-500", "500-1000", "More than 1000"])
-    remote_work = st.selectbox("Remote work allowed?", ["Yes", "No"])
-    tech_company = st.selectbox("Is it a tech company?", ["Yes", "No"])
-    benefits = st.selectbox("Mental health benefits provided?", ["Yes", "No", "Don't know"])
-    care_options = st.selectbox("Access to care options?", ["Yes", "No", "Not sure"])
-    wellness_program = st.selectbox("Wellness program available?", ["Yes", "No", "Don't know"])
-    seek_help = st.selectbox("Ease of seeking help?", ["Yes", "No", "Don't know"])
-
-    # Convert inputs to DataFrame
-    input_data = pd.DataFrame({
-        'Age': [age],
-        'Gender': [gender],
-        'family_history': [family_history],
-        'work_interfere': [work_interfere],
-        'no_employees': [no_employees],
-        'remote_work': [remote_work],
-        'tech_company': [tech_company],
-        'benefits': [benefits],
-        'care_options': [care_options],
-        'wellness_program': [wellness_program],
-        'seek_help': [seek_help]
-    })
-
-    # Predict button
-    if st.button("Predict Risk"):
-        prediction = model.predict(input_data)[0]
-        if prediction == 1:
-            st.error("🔴 At Risk for Mental Health Issues")
+# -----------------
+# Login function
+# -----------------
+def login():
+    st.title("🔐 Login Page")
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
+    if st.button("Login"):
+        if username in USER_CREDENTIALS and USER_CREDENTIALS[username] == password:
+            st.session_state["logged_in"] = True
+            st.success("✅ Login Successful!")
         else:
-            st.success("🟢 Not at Risk")
+            st.error("❌ Invalid Username or Password")
+
+# -----------------
+# Prediction function
+# -----------------
+def predict_risk(input_data):
+    # Convert to DataFrame
+    df = pd.DataFrame([input_data])
+    probability = model.predict_proba(df)[0][1]  # Probability of positive class
+    return round(probability * 100, 2)  # Convert to %
+
+# -----------------
+# Main app after login
+# -----------------
+def main_app():
+    st.title("🧠 Mental Health Risk Prediction")
+
+    # Example input fields (update according to your dataset features)
+    age = st.number_input("Age", min_value=10, max_value=100, value=25)
+    gender = st.selectbox("Gender", ["Male", "Female", "Other"])
+    work_interfere = st.selectbox("Work Interference", ["Never", "Rarely", "Sometimes", "Often"])
+
+    if st.button("Predict"):
+        input_data = {
+            "Age": age,
+            "Gender": gender,
+            "work_interfere": work_interfere
+        }
+        risk_percent = predict_risk(input_data)
+        st.info(f"📝 Predicted Risk: **{risk_percent}%**")
+        if risk_percent >= 70:
+            st.error("⚠ High Risk — Seek support and take care of your mental health.")
+        elif risk_percent >= 40:
+            st.warning("⚠ Moderate Risk — Monitor your mental health regularly.")
+        else:
+            st.success("✅ Low Risk — Keep maintaining good mental health.")
+
+# -----------------
+# Run app
+# -----------------
+if "logged_in" not in st.session_state:
+    st.session_state["logged_in"] = False
+
+if not st.session_state["logged_in"]:
+    login()
 else:
-    st.warning("Please log in to access the predictor.")
+    main_app()
